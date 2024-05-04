@@ -1,0 +1,97 @@
+# Source: heat/templates/job-rabbit-init.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "heat-rabbit-init"
+  labels:
+    release_group: openstack-keystone
+    application: heat
+    component: rabbit-init
+  annotations:
+    
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-4"
+spec:
+  backoffLimit: 1000
+  template:
+    metadata:
+      labels:
+        release_group: openstack-keystone
+        application: heat
+        component: rabbit-init
+      annotations:
+        "openstackhelm.openstack.org/release_uuid": ""
+    spec:
+      serviceAccountName: "heat-rabbit-init"
+      restartPolicy: OnFailure
+            
+      nodeSelector:
+        openstack-control-plane: enabled
+      initContainers:
+        
+        - name: init
+          image: "quay.io/airshipit/kubernetes-entrypoint:v1.0.0"
+          imagePullPolicy: IfNotPresent  
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 65534
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: INTERFACE_NAME
+              value: eth0
+            - name: PATH
+              value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/
+            - name: DEPENDENCY_SERVICE
+              value: "openstack:rabbitmq"
+            - name: DEPENDENCY_DAEMONSET
+              value: ""
+            - name: DEPENDENCY_CONTAINER
+              value: ""
+            - name: DEPENDENCY_POD_JSON
+              value: ""
+            - name: DEPENDENCY_CUSTOM_RESOURCE
+              value: ""
+          command:
+            - kubernetes-entrypoint
+          volumeMounts:
+            []
+      containers:
+        - name: rabbit-init
+          image: "docker.io/rabbitmq:3.7-management"
+          imagePullPolicy: "IfNotPresent"
+          
+          command:
+            - /bin/bash
+            - -c
+            - /tmp/rabbit-init.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: rabbit-init-sh
+              mountPath: /tmp/rabbit-init.sh
+              subPath: rabbit-init.sh
+              readOnly: true
+          env:
+          - name: RABBITMQ_ADMIN_CONNECTION
+            value: rabbit://rabbitmq:password@rabbitmq.openstack.svc.cluster.local:15672/heat
+          - name: RABBITMQ_USER_CONNECTION
+            value: rabbit://heat:password@rabbitmq.openstack.svc.cluster.local:15672/heat
+          - name: RABBITMQ_AUXILIARY_CONFIGURATION
+            value: "{\"policies\":[{\"apply-to\":\"all\",\"definition\":{\"ha-mode\":\"all\",\"ha-sync-mode\":\"automatic\",\"message-ttl\":70000},\"name\":\"ha_ttl_heat\",\"pattern\":\"^(?!(amq\\\\.|reply_)).*\",\"priority\":0,\"vhost\":\"heat\"}]}"
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: rabbit-init-sh
+          configMap:
+            name: "heat-bin"
+            defaultMode: 0555

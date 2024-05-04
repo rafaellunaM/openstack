@@ -1,0 +1,95 @@
+# Source: heat/templates/job-ks-user-domain.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: heat-domain-ks-user
+  labels:
+    release_group: openstack-keystone
+    application: heat
+    component: ks-user-domain
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+    "openstackhelm.openstack.org/release_uuid": ""
+spec:
+  template:
+    metadata:
+      labels:
+        release_group: openstack-keystone
+        application: heat
+        component: ks-user
+      annotations:
+        "openstackhelm.openstack.org/release_uuid": ""
+        configmap-bin-hash: "3291ea52689cf7c64ba40e785581e9adf597538864b5040dbba5ae02517398dc"
+        configmap-etc-hash: "f8481eaa9de6b6ba0869d0602a943ffd8f1cab4b19720b3104b57c13ee553dbd"
+        
+    spec:
+      serviceAccountName: heat-ks-user-domain
+      securityContext:
+        runAsUser: 42424
+      restartPolicy: OnFailure
+      nodeSelector:
+        openstack-control-plane: enabled
+
+      containers:
+        - name: heat-ks-domain-user
+          image: "docker.io/openstackhelm/heat:stein-ubuntu_bionic"
+          imagePullPolicy: IfNotPresent
+          
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          command:
+            - /tmp/ks-domain-user.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ks-user-sh
+              mountPath: /tmp/ks-domain-user.sh
+              subPath: ks-domain-user.sh
+              readOnly: true
+            
+          env:      
+            # heat-keystone-admin.secret      
+            - name: OS_IDENTITY_API_VERSION
+              value: "3"
+            - name: OS_AUTH_URL
+              value: http://keystone-api.openstack.svc.cluster.local:5000/v3
+            - name: OS_REGION_NAME
+              value: RegionOne
+            - name: OS_INTERFACE
+              value: internal
+            - name: OS_ENDPOINT_TYPE
+              value: internal
+            - name: OS_PROJECT_DOMAIN_NAME
+              value: default
+            - name: OS_PROJECT_NAME
+              value: admin
+            - name: OS_USER_DOMAIN_NAME
+              value: default
+            - name: OS_USERNAME
+              value: admin
+            - name: OS_PASSWORD
+              value: password
+            - name: OS_DEFAULT_DOMAIN
+              value: default
+            - name: SERVICE_OS_SERVICE_NAME
+              value: "heat"
+            # secret: heat-keystone-stack-user
+            - name: SERVICE_OS_REGION_NAME
+              value: RegionOne
+            - name: SERVICE_OS_DOMAIN_NAME
+              value: heat
+            - name: SERVICE_OS_USERNAME
+              value: heat-domain
+            - name: SERVICE_OS_PASSWORD
+              value: password
+            - name: SERVICE_OS_ROLE
+              value: "admin"
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: ks-user-sh
+          configMap:
+            name: heat-bin
+            defaultMode: 0555

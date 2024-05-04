@@ -1,0 +1,80 @@
+# Source: heat/templates/job-db-init.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "heat-db-init"
+  labels:
+    release_group: openstack-keystone
+    application: heat
+    component: db-init
+  annotations:
+    
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-5"
+spec:
+  backoffLimit: 1000
+  template:
+    metadata:
+      labels:
+        release_group: openstack-keystone
+        application: heat
+        component: db-init
+      annotations:
+        "openstackhelm.openstack.org/release_uuid": ""
+    spec:
+      serviceAccountName: heat-db-init
+      restartPolicy: OnFailure
+            
+      nodeSelector:
+        openstack-control-plane: enabled
+
+      containers:
+
+        - name: "heat-db-init-0"
+          image: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+          imagePullPolicy: IfNotPresent
+          
+          env:
+            - name: ROOT_DB_CONNECTION
+              valueFrom:
+                secretKeyRef:
+                  name: "heat-db-admin"
+                  key: DB_CONNECTION
+            - name: OPENSTACK_CONFIG_FILE
+              value: "/etc/heat/heat.conf"
+            - name: OPENSTACK_CONFIG_DB_SECTION
+              value: "database"
+            - name: OPENSTACK_CONFIG_DB_KEY
+              value: "connection"
+          command:
+            - /tmp/db-init.py
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: db-init-sh
+              mountPath: /tmp/db-init.py
+              subPath: db-init.py
+              readOnly: true
+            - name: etc-service
+              mountPath: "/etc/heat"
+            - name: db-init-conf
+              mountPath: "/etc/heat/heat.conf"
+              subPath: "heat.conf"
+              readOnly: true
+            - name: db-init-conf
+              mountPath: "/etc/heat/logging.conf"
+              subPath: "logging.conf"
+              readOnly: true
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: db-init-sh
+          configMap:
+            name: "heat-bin"
+            defaultMode: 0555
+        - name: etc-service
+          emptyDir: {}
+        - name: db-init-conf
+          secret:
+            secretName: "heat-etc"
+            defaultMode: 0444

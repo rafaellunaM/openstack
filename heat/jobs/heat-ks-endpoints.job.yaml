@@ -1,0 +1,370 @@
+# Source: heat/templates/job-ks-endpoints.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "heat-ks-endpoints"
+  labels:
+    release_group: openstack-keystone
+    application: heat
+    component: ks-endpoints
+  annotations:
+    
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "-2"
+spec:
+  backoffLimit: 1000
+  template:
+    metadata:
+      labels:
+        release_group: openstack-keystone
+        application: heat
+        component: ks-endpoints
+      annotations:
+        "openstackhelm.openstack.org/release_uuid": ""
+    spec:
+      serviceAccountName: heat-ks-endpoints
+      restartPolicy: OnFailure
+     
+      nodeSelector:
+        openstack-control-plane: enabled
+
+      containers:
+        - name: "orchestration-ks-endpoints-admin"
+          image: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+          imagePullPolicy: IfNotPresent
+          
+          command:
+            - /bin/bash
+            - -c
+            - /tmp/ks-endpoints.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ks-endpoints-sh
+              mountPath: /tmp/ks-endpoints.sh
+              subPath: ks-endpoints.sh
+              readOnly: true
+            
+          env:            
+            - name: OS_IDENTITY_API_VERSION
+              value: "3"
+            - name: OS_AUTH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_AUTH_URL
+            - name: OS_REGION_NAME
+              value: "RegionOne"
+            - name: OS_INTERFACE
+              value: "internal"
+            - name: OS_ENDPOINT_TYPE
+              value: "internal"
+            - name: OS_PROJECT_DOMAIN_NAME
+              value: "default"
+            - name: OS_PROJECT_NAME
+              value: "admin"
+            - name: OS_USER_DOMAIN_NAME
+              value: "default"
+            - name: OS_USERNAME
+              value: "admin"
+            - name: OS_PASSWORD
+              value: "password"
+            - name: OS_DEFAULT_DOMAIN
+              value: "default"
+
+            - name: OS_SVC_ENDPOINT
+              value: "admin"
+            - name: OS_SERVICE_NAME
+              value: "heat"
+            - name: OS_SERVICE_TYPE
+              value: "orchestration"
+            - name: OS_SERVICE_ENDPOINT
+              value: "http://heat-api.openstack.svc.cluster.local:8004/v1/%(project_id)s"
+        - name: "orchestration-ks-endpoints-internal"
+          image: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+          imagePullPolicy: IfNotPresent
+          
+          command:
+            - /bin/bash
+            - -c
+            - /tmp/ks-endpoints.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ks-endpoints-sh
+              mountPath: /tmp/ks-endpoints.sh
+              subPath: ks-endpoints.sh
+              readOnly: true
+            
+          env:            
+            - name: OS_IDENTITY_API_VERSION
+              value: "3"
+            - name: OS_AUTH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_AUTH_URL
+            - name: OS_REGION_NAME
+              value: "RegionOne"
+            - name: OS_INTERFACE
+              value: "internal"
+            - name: OS_ENDPOINT_TYPE
+              value: "internal"
+            - name: OS_PROJECT_DOMAIN_NAME
+              value: "default"
+            - name: OS_PROJECT_NAME
+              value: "admin"
+            - name: OS_USER_DOMAIN_NAME
+              value: "default"
+            - name: OS_USERNAME
+              value: "admin"
+            - name: OS_PASSWORD
+              value: "password"
+            - name: OS_DEFAULT_DOMAIN
+              value: "default"
+
+            - name: OS_SVC_ENDPOINT
+              value: "internal"
+            - name: OS_SERVICE_NAME
+              value: "heat"
+            - name: OS_SERVICE_TYPE
+              value: "orchestration"
+            - name: OS_SERVICE_ENDPOINT
+              value: "http://heat-api.openstack.svc.cluster.local:8004/v1/%(project_id)s"
+        - name: "orchestration-ks-endpoints-public"
+          image: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+          imagePullPolicy: IfNotPresent
+          
+          command:
+            - /bin/bash
+            - -c
+            - /tmp/ks-endpoints.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ks-endpoints-sh
+              mountPath: /tmp/ks-endpoints.sh
+              subPath: ks-endpoints.sh
+              readOnly: true
+            
+          env:            
+            - name: OS_IDENTITY_API_VERSION
+              value: "3"
+            - name: OS_AUTH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_AUTH_URL
+            - name: OS_REGION_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_REGION_NAME
+            - name: OS_INTERFACE
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_INTERFACE
+            - name: OS_ENDPOINT_TYPE
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_INTERFACE
+            - name: OS_PROJECT_DOMAIN_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_PROJECT_DOMAIN_NAME
+            - name: OS_PROJECT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_PROJECT_NAME
+            - name: OS_USER_DOMAIN_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_USER_DOMAIN_NAME
+            - name: OS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_USERNAME
+            - name: OS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_PASSWORD
+            - name: OS_DEFAULT_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_DEFAULT_DOMAIN
+            - name: OS_SVC_ENDPOINT
+              value: "public"
+            - name: OS_SERVICE_NAME
+              value: "heat"
+            - name: OS_SERVICE_TYPE
+              value: "orchestration"
+            - name: OS_SERVICE_ENDPOINT
+              value: "http://heat.openstack.svc.cluster.local/v1/%(project_id)s"
+        - name: "cloudformation-ks-endpoints-admin"
+          image: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+          imagePullPolicy: IfNotPresent
+          
+          command:
+            - /bin/bash
+            - -c
+            - /tmp/ks-endpoints.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ks-endpoints-sh
+              mountPath: /tmp/ks-endpoints.sh
+              subPath: ks-endpoints.sh
+              readOnly: true
+            
+          env:            
+            - name: OS_IDENTITY_API_VERSION
+              value: "3"
+            - name: OS_AUTH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_AUTH_URL
+            - name: OS_REGION_NAME
+              value: "RegionOne"
+            - name: OS_INTERFACE
+              value: "internal"
+            - name: OS_ENDPOINT_TYPE
+              value: "internal"
+            - name: OS_PROJECT_DOMAIN_NAME
+              value: "default"
+            - name: OS_PROJECT_NAME
+              value: "admin"
+            - name: OS_USER_DOMAIN_NAME
+              value: "default"
+            - name: OS_USERNAME
+              value: "admin"
+            - name: OS_PASSWORD
+              value: "password"
+            - name: OS_DEFAULT_DOMAIN
+              value: "default"
+
+            - name: OS_SVC_ENDPOINT
+              value: "admin"
+            - name: OS_SERVICE_NAME
+              value: "heat-cfn"
+            - name: OS_SERVICE_TYPE
+              value: "cloudformation"
+            - name: OS_SERVICE_ENDPOINT
+              value: "http://heat-cfn.openstack.svc.cluster.local:8000/v1"
+        - name: "cloudformation-ks-endpoints-internal"
+          image: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+          imagePullPolicy: IfNotPresent
+          
+          command:
+            - /bin/bash
+            - -c
+            - /tmp/ks-endpoints.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ks-endpoints-sh
+              mountPath: /tmp/ks-endpoints.sh
+              subPath: ks-endpoints.sh
+              readOnly: true
+            
+          env:            
+            - name: OS_IDENTITY_API_VERSION
+              value: "3"
+            - name: OS_AUTH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_AUTH_URL
+            - name: OS_REGION_NAME
+              value: "RegionOne"
+            - name: OS_INTERFACE
+              value: "internal"
+            - name: OS_ENDPOINT_TYPE
+              value: "internal"
+            - name: OS_PROJECT_DOMAIN_NAME
+              value: "default"
+            - name: OS_PROJECT_NAME
+              value: "admin"
+            - name: OS_USER_DOMAIN_NAME
+              value: "default"
+            - name: OS_USERNAME
+              value: "admin"
+            - name: OS_PASSWORD
+              value: "password"
+            - name: OS_DEFAULT_DOMAIN
+              value: "default"
+
+            - name: OS_SVC_ENDPOINT
+              value: "internal"
+            - name: OS_SERVICE_NAME
+              value: "heat-cfn"
+            - name: OS_SERVICE_TYPE
+              value: "cloudformation"
+            - name: OS_SERVICE_ENDPOINT
+              value: "http://heat-cfn.openstack.svc.cluster.local:8000/v1"
+        - name: "cloudformation-ks-endpoints-public"
+          image: docker.io/openstackhelm/heat:stein-ubuntu_bionic
+          imagePullPolicy: IfNotPresent
+          
+          command:
+            - /bin/bash
+            - -c
+            - /tmp/ks-endpoints.sh
+          volumeMounts:
+            - name: pod-tmp
+              mountPath: /tmp
+            - name: ks-endpoints-sh
+              mountPath: /tmp/ks-endpoints.sh
+              subPath: ks-endpoints.sh
+              readOnly: true
+            
+          env:            
+            - name: OS_IDENTITY_API_VERSION
+              value: "3"
+            - name: OS_AUTH_URL
+              valueFrom:
+                secretKeyRef:
+                  name: heat-keystone-admin
+                  key: OS_AUTH_URL
+            - name: OS_REGION_NAME
+              value: "RegionOne"
+            - name: OS_INTERFACE
+              value: "internal"
+            - name: OS_ENDPOINT_TYPE
+              value: "internal"
+            - name: OS_PROJECT_DOMAIN_NAME
+              value: "default"
+            - name: OS_PROJECT_NAME
+              value: "admin"
+            - name: OS_USER_DOMAIN_NAME
+              value: "default"
+            - name: OS_USERNAME
+              value: "admin"
+            - name: OS_PASSWORD
+              value: "password"
+            - name: OS_DEFAULT_DOMAIN
+              value: "default"
+
+            - name: OS_SVC_ENDPOINT
+              value: "public"
+            - name: OS_SERVICE_NAME
+              value: "heat-cfn"
+            - name: OS_SERVICE_TYPE
+              value: "cloudformation"
+            - name: OS_SERVICE_ENDPOINT
+              value: "http://cloudformation.openstack.svc.cluster.local/v1"
+      volumes:
+        - name: pod-tmp
+          emptyDir: {}
+        - name: ks-endpoints-sh
+          configMap:
+            name: "heat-bin"
+            defaultMode: 0555
